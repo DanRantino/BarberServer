@@ -3,7 +3,10 @@ import cors from 'cors'
 import bodyParser from 'body-parser'
 import dotenv from 'dotenv'
 import connectMongo from './db/connect'
-import { loginWithPassword, refreshToken } from './db/querys'
+import { createUser, loginWithPassword, refreshToken } from './db/querys'
+import multer from 'multer'
+import * as fs from 'fs'
+import * as path from 'path'
 import decodeToken from './utils/decodeToken'
 
 dotenv.config()
@@ -15,39 +18,79 @@ interface Req extends Request {
   userId: string
 }
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'src/uploads')
+  },
+  filename: (req: Request, file: Express.Multer.File, callback) => {
+    callback(null, file.originalname)
+  }
+})
+
+const upload = multer({ storage })
+
 const SECRET = 'segredo'
 
 function verifyJWT(req: Req, res: Response, next: NextFunction) {
   const token = req.get('authorization')
-  next(decodeToken(token))
+  console.log(token)
+  /*if (!token) {
+    return res.status(401).end()
+  }
+  jwt.verify(token, SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).end()
+    }
+    next()
+  })
+  */
+
+  next()
 }
 
 
 app.use(cors())
 app.use(bodyParser.json())
 
+app.post('/signup', upload.single('image'), async (req, res, next) => {
+  const { user, password } = req.body
+  const img = {
+    data: fs.readFileSync(path.join(__dirname + '/uploads/' + req.file.originalname)),
+    contentType: 'image/png'
+  }
+  const resp = await createUser({
+    user, password,
+    image: {
+      ...img
+    }
+  })
+  res.send(resp).status(200)
+})
+
 app.post('/login', async (req: Request, res: Response) => {
+  console.log(req.body)
   const { user, password } = req.body
   const resp = await loginWithPassword(user, password)
   res.send(resp)
 })
 
-app.post('/refresh-login', async (req: Request, res: Response) => {
+app.post('/refresh-login', verifyJWT, async (req: Request, res: Response) => {
   const token = req.get('authorization')
   const decode = decodeToken(token)
-  let resp
+  let resp, status
   if (typeof decode !== 'number') {
-    let resp = await refreshToken(decode.userId)
-    res.status(200)
+    resp = await refreshToken(decode.userId)
+    status = 200
   } else {
-    res.status(decode)
+    status = 401
   }
-  res.send(resp)
+  res.send(resp).status(status).end()
 })
 
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`${process.env.PORT || 5000}`)
 })
+
 
 connectMongo().then()
