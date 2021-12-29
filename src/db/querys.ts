@@ -2,6 +2,7 @@ import defineModel from '../utils/defineModel'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import { User } from '../models/userModel'
+import { errorTypes } from '../types/errorTypes'
 
 export const SECRET = 'segredo'
 
@@ -19,9 +20,24 @@ export async function loginWithPassword(user, password) {
 }
 
 export async function createUser(obj: User) {
-  const schema = await defineModel('user')
-  const model = schema()
-  return model.create(obj)
+  let resp: errorTypes = {
+    data: '',
+    status: 0
+  }
+  try {
+    const schema = await defineModel('user')
+    const model = schema()
+    obj.password = await bcrypt.hash(obj.password, 10)
+    resp.data = await model.create(obj).catch((e) => {
+      throw e
+    })
+    resp.status = 200
+  } catch (e) {
+    resp.data = 'error'
+    resp.status = 500
+  }
+  return resp
+
 }
 
 export async function findOneUser(id: string) {
@@ -35,7 +51,7 @@ export async function refreshToken(userId: string) {
   try {
     const resp = await findOneUser(userId)
     newToken = jwt.sign({ userId: resp._id }, SECRET, {
-      expiresIn: '30s'
+      expiresIn: '5m'
     })
   } catch (e) {
     console.error('error', e)

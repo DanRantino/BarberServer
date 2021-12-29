@@ -5,9 +5,9 @@ import dotenv from 'dotenv'
 import connectMongo from './db/connect'
 import { createUser, loginWithPassword, refreshToken } from './db/querys'
 import multer from 'multer'
-import * as fs from 'fs'
-import * as path from 'path'
 import decodeToken from './utils/decodeToken'
+import * as path from 'path'
+import * as fs from 'fs'
 
 dotenv.config()
 
@@ -52,19 +52,20 @@ function verifyJWT(req: Req, res: Response, next: NextFunction) {
 app.use(cors())
 app.use(bodyParser.json())
 
+
 app.post('/signup', upload.single('image'), async (req, res, next) => {
   const { user, password } = req.body
   const img = {
     data: fs.readFileSync(path.join(__dirname + '/uploads/' + req.file.originalname)),
     contentType: 'image/png'
   }
-  const resp = await createUser({
+  const { status, data } = await createUser({
     user, password,
     image: {
       ...img
     }
   })
-  res.send(resp).status(200)
+  res.status(status).send(data)
 })
 
 app.post('/login', async (req: Request, res: Response) => {
