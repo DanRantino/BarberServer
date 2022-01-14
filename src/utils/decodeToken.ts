@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 const SECRET = 'segredo'
 
 type ret = {
-  userId: string,
+  id: number,
   iat: number,
   exp: number
 }
