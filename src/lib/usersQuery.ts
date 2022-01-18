@@ -1,6 +1,7 @@
+import { userType } from '../types/userType';
 import prisma from './prisma';
 
-export const findOneByEmail = (email: string) => {
+export const findOneByEmail = (email: string): userType => {
     let user;
     try {
         user = prisma.user.findUnique({
